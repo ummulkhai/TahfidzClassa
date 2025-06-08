@@ -360,7 +360,7 @@
                 const btn = document.getElementById('hikmah-ayat-btn'); btn.disabled = true; btn.innerHTML = `<div class="loader mx-auto"></div>`;
                 const prompt = `Kamu Ustadzah Ummul. Jelaskan hikmah dari ayat '${ayat}' untuk anak kelas 3 SD. Bahasa ceria & sederhana.`;
                 try {
-                    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] }, apiKey = "",
+                    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] }, apiKey = "AIzaSyDPAj4MpxuFgnEoF2SfIw_bw1lPTj1jSUY",
                           apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${AIzaSyDPAj4MpxuFgnEoF2SfIw_bw1lPTj1jSUY}`,
                           response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                           result = await response.json();
@@ -383,7 +383,7 @@
                 askUstadzahBtn.disabled = true; ustadzahAnswerArea.classList.remove('hidden'); ustadzahLoading.classList.remove('hidden'); ustadzahResponse.classList.add('hidden');
                 const prompt = `Kamu Ustadzah Ummul, guru ngaji ramah untuk anak kelas 3 SD. Jawab pertanyaan ini dalam Bahasa Indonesia sederhana & ceria: "${question}"`;
                 try {
-                    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] }, apiKey = "",
+                    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] }, apiKey = "AIzaSyDPAj4MpxuFgnEoF2SfIw_bw1lPTj1jSUY",
                           apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${AIzaSyDPAj4MpxuFgnEoF2SfIw_bw1lPTj1jSUY}`,
                           response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
                           result = await response.json();
