@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Para Bintang Al-Majid - Petualangan Interaktif</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Cheerful Pink & Friends -->
+    <!-- Application Structure Plan: Adding a new "Pojok Kreativitas" card to allow embedding external content. This feature uses an iframe to display content from user-provided URLs, with special handling for YouTube links to ensure they embed correctly. This adds significant extensibility and creative potential for users. -->
+    <!-- Visualization & Content Choices:
+        - Embed Feature: A new card with a URL input and a display area. JS logic parses the URL, identifies YouTube links to format them correctly, and injects an iframe into the container. This makes the app a mini-portal for curated content.
+        - Other Features: All successful existing features ("Buku Kisah Nabi", "Tantangan Sambung Ayat", "Tanya Ustadzah", "Rangkai Ayat") are retained.
+        - Theming: The cheerful pink theme is maintained for a consistent and friendly user experience.
+        - Library/Method: Vanilla JS, Tailwind CSS, Gemini API calls. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background-color: #fce7f3;
+            color: #5b21b6;
+            position: relative;
+            overflow-x: hidden;
+        }
+        .story-card { 
+            background-color: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px);
+            border: 2px solid #fbcfe8; transition: all 0.3s ease; 
+            border-radius: 24px;
+        }
+        .story-card:hover { 
+            transform: translateY(-5px) scale(1.02); 
+            box-shadow: 0 10px 25px rgba(219, 39, 119, 0.15); 
+            border-color: #f9a8d4;
+        }
+        .btn-primary { 
+            background-color: #f43f5e; color: white; transition: all 0.3s;
+            box-shadow: 0 4px 14px rgba(244, 63, 94, 0.4);
+            border-radius: 9999px;
+        }
+        .btn-primary:hover:not(:disabled) { 
+            background-color: #e11d48; transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(244, 63, 94, 0.5);
+        }
+        .btn-primary:disabled { background-color: #fb7185; cursor: not-allowed; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
+        .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+        .modal-content { background: white; padding: 2rem; border-radius: 1rem; max-width: 90%; width: 500px; transform: scale(0.9); transition: transform 0.3s ease; }
+        .modal-overlay.visible .modal-content { transform: scale(1); }
+        .ayat-word {
+            cursor: grab; padding: 8px 16px; margin: 4px; border-radius: 12px;
+            background-color: #ede9fe; color: #7c3aed; border: 2px dashed #c4b5fd;
+        }
+        .ayat-drop-zone {
+            padding: 16px; border-radius: 16px; border: 2px dashed #f9a8d4;
+            background-color: #fdf2f8; min-height: 80px;
+        }
+        .dragging { opacity: 0.5; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loader {
+            width: 20px; height: 20px; border: 3px solid #f43f5e;
+            border-top-color: transparent; border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .scene-image {
+            width: 100%; height: 200px; border-radius: 12px;
+            background-color: #f3e8ff; object-fit: cover;
+        }
+        .quiz-option {
+            background-color: white; border: 2px solid #e9d5ff; border-radius: 12px;
+            padding: 12px; text-align: center; transition: all 0.2s;
+        }
+        .quiz-option:hover { border-color: #a855f7; background-color: #faf5ff; }
+        .quiz-option.correct { background-color: #dcfce7; border-color: #22c55e; }
+        .quiz-option.incorrect { background-color: #fee2e2; border-color: #ef4444; }
+        .page-curl::after {
+            content: ''; position: absolute; bottom: 0; right: 0;
+            width: 0; height: 0;
+            border-bottom: 30px solid #f9a8d4;
+            border-left: 30px solid transparent;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="max-w-4xl mx-auto p-5 md:p-10 relative z-10">
+        <header class="text-center mb-12">
+            <h1 class="text-5xl md:text-6xl font-bold text-purple-800">Para Penjaga Cahaya</h1>
+            <p class="text-xl text-purple-600 mt-2">Petualangan Hebat dari Kelas <strong>3C Al-Majid</strong></p>
+        </header>
+
+        <div class="space-y-12">
+            <section class="story-card p-6 md:p-8">
+                <h2 class="text-3xl font-bold text-rose-600 mb-3 flex items-center gap-3">🌟 Selamat Datang!</h2>
+                <p class="text-purple-700 mb-6">Di kelas ceria ini, para Bintang Kelas 3C Al-Majid siap berpetualang dengan Al-Qur'an. Yuk, kenalan dengan mereka!</p>
+                <div class="text-center"><button id="show-students-btn" class="btn-primary font-bold py-3 px-8 text-lg">Kenalan dengan Bintang Kelas</button></div>
+            </section>
+            
+            <section class="story-card p-6 md:p-8">
+                <h2 class="text-3xl font-bold text-rose-600 mb-3 flex items-center gap-3">📖 Buku Kisah Nabi</h2>
+                <p class="text-purple-700 mb-6">Ayo baca kisah teladan Nabi Ibrahim AS dalam format buku digital! Balik halamannya untuk mengikuti petualangan serunya.</p>
+                <div id="buku-container" class="bg-rose-50 rounded-lg p-4 relative page-curl">
+                    <img id="buku-image" src="" alt="[Ilustrasi Adegan Kisah]" class="scene-image mb-4">
+                    <p id="buku-text" class="text-purple-800 text-center mb-4 min-h-[70px]"></p>
+                    <div class="flex justify-between items-center">
+                        <button id="prev-page-btn" class="btn-primary py-2 px-5">← Sebelumnya</button>
+                        <span id="page-counter" class="font-semibold text-purple-600"></span>
+                        <button id="next-page-btn" class="btn-primary py-2 px-5">Selanjutnya →</button>
+                    </div>
+                    <div id="buku-feedback" class="text-center mt-4"></div>
+                </div>
+            </section>
+
+             <section class="story-card p-6 md:p-8">
+                <h2 class="text-3xl font-bold text-rose-600 mb-3 flex items-center gap-3">🎬 Pojok Kreativitas</h2>
+                <p class="text-purple-700 mb-6">Punya link video YouTube atau buku cerita online yang seru? Tempel di sini dan tonton bersama!</p>
+                <div class="bg-rose-50 rounded-lg p-4">
+                    <div class="flex gap-2">
+                        <input type="text" id="embed-url" class="w-full p-3 border-2 border-rose-200 rounded-full focus:ring-2 focus:ring-rose-400 focus:border-rose-400 transition" placeholder="Tempel link YouTube di sini...">
+                        <button id="embed-btn" class="btn-primary font-bold px-6">Tampilkan</button>
+                    </div>
+                    <div id="embed-container" class="mt-4 aspect-w-16 aspect-h-9 bg-purple-100 rounded-lg overflow-hidden" style="padding-bottom: 56.25%; position: relative;">
+                        <div class="flex items-center justify-center h-full text-purple-400" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">Tampilan konten akan muncul di sini...</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="story-card p-6 md:p-8">
+                <h2 class="text-3xl font-bold text-rose-600 mb-3 flex items-center gap-3">🏆 Tantangan Sambung Ayat</h2>
+                <p class="text-purple-700 mb-6">Seberapa lancar hafalanmu? Lanjutkan potongan ayat dari Juz 29 & 30 ini dengan memilih jawaban yang paling tepat!</p>
+                <div id="kuis-container" class="bg-rose-50 rounded-lg p-6">
+                    <div id="kuis-area">
+                        <div class="flex justify-between items-center mb-2">
+                            <p id="kuis-counter" class="font-semibold text-slate-500"></p>
+                            <p id="kuis-skor" class="font-bold text-rose-600"></p>
+                        </div>
+                        <p class="text-center font-semibold text-xl mb-4 h-14 text-purple-800" dir="rtl" id="kuis-ayat"></p>
+                        <div id="kuis-pilihan" class="space-y-3 max-w-md mx-auto"></div>
+                    </div>
+                    <div id="kuis-selesai" class="hidden text-center">
+                        <p class="font-bold text-2xl text-rose-600 mb-2">Tantangan Selesai!</p>
+                        <p id="skor-akhir" class="text-lg mb-4 text-purple-700"></p>
+                        <button id="ulang-kuis-btn" class="btn-primary font-bold py-2 px-6">Main Lagi</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="story-card p-6 md:p-8">
+                <h2 class="text-3xl font-bold text-rose-600 mb-3 flex items-center gap-3">💬 Tanya Ustadzah ✨</h2>
+                <p class="text-purple-700 mb-6">Punya pertanyaan tentang Islam? Tanyakan pada Ustadzah Ummul virtual! Beliau siap menjawab.</p>
+                <div class="bg-rose-50 rounded-lg p-4">
+                    <textarea id="ustadzah-question" class="w-full p-3 border-2 border-rose-200 rounded-lg focus:ring-2 focus:ring-rose-400 focus:border-rose-400 transition" rows="3" placeholder="Tulis pertanyaanmu di sini..."></textarea>
+                    <button id="ask-ustadzah-btn" class="btn-primary font-bold py-2 px-6 mt-3 w-full flex items-center justify-center gap-2">Tanya Sekarang</button>
+                    <div id="ustadzah-answer-area" class="mt-4 p-4 bg-white rounded-lg border border-rose-200 hidden">
+                        <div id="ustadzah-loading" class="flex items-center gap-3 text-slate-500"><div class="loader"></div><span>Ustadzah sedang berpikir...</span></div>
+                        <div id="ustadzah-response" class="text-slate-700"></div>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="story-card p-6 md:p-8">
+                <h2 class="text-3xl font-bold text-rose-600 mb-3 flex items-center gap-3">🎨 Rangkai Ayat</h2>
+                <p class="text-purple-700 mb-6">Ayo bermain! Seret dan susun potongan kata ini menjadi ayat yang benar. Setiap kali bermain, ayatnya akan berbeda!</p>
+                <div class="bg-rose-50 rounded-lg p-4">
+                    <div id="ayat-drop-zone" class="ayat-drop-zone flex items-center justify-center text-right" dir="rtl"></div>
+                    <div id="ayat-word-bank" class="flex flex-wrap justify-center p-4" dir="rtl"></div>
+                    <div id="ayat-feedback" class="text-center mt-4"></div>
+                </div>
+            </section>
+        </div>
+        <footer class="text-center mt-12 pt-8"><p class="text-purple-600 mt-2 font-semibold">Dibuat dengan ❤️ untuk Kelas 3C Al-Majid</p></footer>
+    </div>
+    <div id="student-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold text-rose-600">Para Bintang Kelas 3C Al-Majid</h3>
+                <button id="close-modal-btn" class="text-2xl font-bold text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <div id="student-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto p-2"></div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const students = [
+                { name: 'Jendra', gender: 'male', desc: 'Pemberani dan suka memimpin teman-temannya dalam kebaikan.' }, { name: 'Abyan', gender: 'male', desc: 'Pendiam dengan suara merdu, cahayanya bersinar saat mengaji.' },
+                { name: 'Nindy', gender: 'female', desc: 'Cerdas dan cepat tanggap, hafalannya selalu lancar.' }, { name: 'Tayya', gender: 'male', desc: 'Penuh semangat dan selalu ceria, membuat suasana kelas jadi hidup.' },
+                { name: 'Lulu', gender: 'female', desc: 'Lembut dan penyayang, suka membantu teman yang kesulitan.' }, { name: 'Aliyah', gender: 'female', desc: 'Tekun dan sabar, hafalannya rapi dan teratur.' },
+                { name: 'Fatih', gender: 'male', desc: 'Penjelajah ilmu, selalu penasaran dengan makna setiap ayat.' }, { name: 'Ikhwal', gender: 'male', desc: 'Bijaksana dan tenang, menjadi penengah di antara teman-temannya.' },
+                { name: 'Rafif', gender: 'male', desc: 'Rajin dan disiplin, tidak pernah melewatkan muraja\'ah.' }, { name: 'Raffi', gender: 'male', desc: 'Kompetitif dan sportif, suka menantang teman untuk adu hafalan.' },
+                { name: 'Lio', gender: 'male', desc: 'Kreatif dan imajinatif, suka membayangkan cerita di balik setiap surah.' }, { name: 'Farah', gender: 'female', desc: 'Anggun dan bersuara lembut, lantunannya menenangkan hati.' },
+                { name: 'Almeera', gender: 'female', desc: 'Mandiri dan percaya diri, tidak takut mencoba hal baru.' }, { name: 'Artami', gender: 'female', desc: 'Seniman kelas, tulisan kaligrafinya sangat indah.' },
+                { name: 'Aufa', gender: 'female', desc: 'Setia kawan dan bisa diandalkan, selalu ada untuk temannya.' }, { name: 'Azka', gender: 'male', desc: 'Jeli dan teliti, tajwidnya selalu tepat dan sempurna.' },
+                { name: 'Nadina', gender: 'female', desc: 'Ramah dan mudah bergaul, punya banyak teman.' }, { name: 'Asyifa', gender: 'female', desc: 'Pemaaf dan berhati lapang, membawa kedamaian di kelas.' },
+                { name: 'Kayla', gender: 'female', desc: "Memiliki ingatan tajam seperti kamera, mampu 'memotret' ayat dalam benaknya." }, { name: 'Ayseel', gender: 'female', desc: 'Penuh rasa ingin tahu, pertanyaannya selalu dalam dan cerdas.' },
+            ];
+            
+            const studentModal = document.getElementById('student-modal'), showStudentsBtn = document.getElementById('show-students-btn'),
+                  closeModalBtn = document.getElementById('close-modal-btn'), studentListContainer = document.getElementById('student-list');
+            students.forEach(student => {
+                const icon = student.gender === 'female' ? '🧕🏻' : '👦🏻';
+                const card = document.createElement('div');
+                card.className = 'flex items-center gap-4 p-3 border rounded-lg bg-white hover:bg-rose-50 transition';
+                card.innerHTML = `<div class="text-3xl">${icon}</div><div><p class="font-bold text-purple-700">${student.name}</p><p class="text-sm text-purple-500">${student.desc}</p></div>`;
+                studentListContainer.appendChild(card);
+            });
+            showStudentsBtn.addEventListener('click', () => studentModal.classList.add('visible'));
+            closeModalBtn.addEventListener('click', () => studentModal.classList.remove('visible'));
+            studentModal.addEventListener('click', e => { if (e.target === studentModal) studentModal.classList.remove('visible'); });
+
+            // --- Buku Kisah Nabi Logic ---
+            const bukuImage = document.getElementById('buku-image'), bukuText = document.getElementById('buku-text'),
+                  prevPageBtn = document.getElementById('prev-page-btn'), nextPageBtn = document.getElementById('next-page-btn'),
+                  pageCounter = document.getElementById('page-counter'), bukuFeedback = document.getElementById('buku-feedback');
+            const pages = [
+                { img: "https://placehold.co/600x400/fde68a/854d0e?text=Nabi+Ibrahim+dan+Berhala", text: "Nabi Ibrahim hidup di kaum yang menyembah patung buatan tangan mereka sendiri." },
+                { img: "https://placehold.co/600x400/fca5a5/991b1b?text=Menghancurkan+Berhala", text: "Dengan berani, beliau menghancurkan semua patung itu, menyisakan yang terbesar dengan kapak di lehernya untuk memberi pelajaran." },
+                { img: "https://placehold.co/600x400/fdba74/b45309?text=Dilemparkan+ke+Api", text: "Raja Namrud marah besar dan memerintahkan agar Nabi Ibrahim dibakar hidup-hidup di dalam api yang menyala-nyala." },
+                { img: "https://placehold.co/600x400/a5f3fc/0e7490?text=Api+Menjadi+Dingin", text: "Atas izin Allah, api yang panas itu menjadi dingin dan tidak membahayakan Nabi Ibrahim sama sekali." },
+                { img: "https://placehold.co/600x400/d9f99d/3f6212?text=Selamat+dari+Api", text: "Nabi Ibrahim keluar dengan selamat, menunjukkan kebesaran Allah kepada semua orang." }
+            ];
+            let currentPage = 0;
+            function showPage(pageNumber) {
+                const page = pages[pageNumber];
+                bukuImage.src = page.img;
+                bukuText.textContent = page.text;
+                pageCounter.textContent = `Halaman ${pageNumber + 1} dari ${pages.length}`;
+                prevPageBtn.disabled = pageNumber === 0;
+                nextPageBtn.disabled = pageNumber === pages.length - 1;
+                bukuFeedback.innerHTML = '';
+                if (pageNumber === pages.length - 1) {
+                    bukuFeedback.innerHTML = `<button id="hikmah-kisah-btn" class="btn-primary py-2 px-6 mt-4">Lihat Mutiara Hikmah</button>`;
+                    document.getElementById('hikmah-kisah-btn').addEventListener('click', getKisahHikmah);
+                }
+            }
+            prevPageBtn.addEventListener('click', () => { if (currentPage > 0) { currentPage--; showPage(currentPage); } });
+            nextPageBtn.addEventListener('click', () => { if (currentPage < pages.length - 1) { currentPage++; showPage(currentPage); } });
+            
+            async function getKisahHikmah() {
+                const btn = document.getElementById('hikmah-kisah-btn'); btn.disabled = true; btn.innerHTML = `<div class="loader mx-auto"></div>`;
+                const prompt = `Kamu Ustadzah Ummul. Jelaskan hikmah dari kisah Nabi Ibrahim dan api untuk anak kelas 3 SD. Bahasa ceria & sederhana.`;
+                try {
+                    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] }, apiKey = "",
+                          apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+                          response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                          result = await response.json();
+                    if (result.candidates) {
+                        bukuFeedback.innerHTML = `<div class="p-3 bg-amber-100 text-amber-800 rounded-lg text-left mt-4">${result.candidates[0].content.parts[0].text.replace(/\n/g, '<br>')}</div>`;
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            // --- Embed Logic ---
+            const embedUrlInput = document.getElementById('embed-url');
+            const embedBtn = document.getElementById('embed-btn');
+            const embedContainer = document.getElementById('embed-container');
+            embedBtn.addEventListener('click', () => {
+                const url = embedUrlInput.value.trim();
+                if (!url) return;
+
+                let embedUrl = url;
+                // Cek jika link YouTube
+                const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+                const youtubeMatch = url.match(youtubeRegex);
+                if (youtubeMatch && youtubeMatch[1]) {
+                    embedUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+                }
+                
+                embedContainer.innerHTML = `<iframe class="w-full h-full absolute top-0 left-0" src="${embedUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+            });
+
+            // --- Tantangan Sambung Ayat ---
+            const kuisContainer = document.getElementById('kuis-container'), kuisArea = document.getElementById('kuis-area'),
+                  kuisSelesai = document.getElementById('kuis-selesai'), kuisCounter = document.getElementById('kuis-counter'),
+                  kuisSkorEl = document.getElementById('kuis-skor'), kuisAyat = document.getElementById('kuis-ayat'),
+                  kuisPilihan = document.getElementById('kuis-pilihan'), skorAkhir = document.getElementById('skor-akhir'),
+                  ulangKuisBtn = document.getElementById('ulang-kuis-btn');
+            const soalBank = [
+                { q: "‘Amma yatasā`alụn...", a: "‘Anin-naba`il-‘aẓīm", o: ["Allażī hum fīhi mukhtalifụn", "‘Anin-naba`il-‘aẓīm", "Kallā saya‘lamụn"] },
+                { q: "Wailul lil-muṭaffifīn...", a: "Allażīna iżaktālụ ‘alan-nāsi yastaufụn", o: ["Wa`iżā kālụhum aw wazanụhum yukhsirụn", "Allażīna iżaktālụ ‘alan-nāsi yastaufụn", "Alā yaẓunnu ulā`ika annahum mab‘ụṡụn"] },
+                { q: "Hal atāka ḥadīṡul-gāsyiyah...", a: "Wujūhuy yauma`iżin khāsyi‘ah", o: ["Laisa lahum ṭa‘āmun", "Wujūhuy yauma`iżin khāsyi‘ah", "‘Āmilatun nāṣibah"] },
+                { q: "Sabiḥisma rabbikal-a‘lā...", a: "Allażī khalaqa fasawwā", o: ["Wallażī qaddara fahadā", "Wallażī akhrajal-mar‘ā", "Allażī khalaqa fasawwā"] },
+                { q: "Tabārakallażī biyadihil-mulk...", a: "wa huwa ‘alā kulli syai`in qadīr", o: ["allażī khalaqal-mauta wal-ḥayāt", "wa huwa ‘alā kulli syai`in qadīr", "wa ilaihil-maṣīr"] },
+                { q: "Nūn, wal-qalami wa mā...", a: "yasṭurụn", o: ["ya‘lamụn", "yasṭurụn", "ya‘qilụn"] },
+                { q: "Al-ḥāqqah...", a: "Mal-ḥāqqah", o: ["Yauma yakụnun-nās", "Mal-ḥāqqah", "Wa mā adrāka mal-ḥāqqah"] },
+                { q: "Yā ayyuhal-muzzammil...", a: "Qumil-laila illā qalīlā", o: ["Qumil-laila illā qalīlā", "Inna lakā fin-nahāri sabḥan ṭawīlā", "Warattilil-qur`āna tartīlā"] }
+            ];
+            let kuisSoal = [], kuisIndex = 0, kuisSkor = 0;
+            function mulaiKuis() {
+                kuisSoal = [...soalBank].sort(() => .5 - Math.random()); kuisIndex = 0; kuisSkor = 0;
+                kuisSelesai.classList.add('hidden'); kuisArea.classList.remove('hidden'); muatSoal();
+            }
+            function muatSoal() {
+                if (kuisIndex >= kuisSoal.length) { tampilkanSkorAkhir(); return; }
+                const soal = kuisSoal[kuisIndex];
+                kuisCounter.textContent = `Soal ${kuisIndex + 1}/${kuisSoal.length}`;
+                kuisSkorEl.textContent = `Skor: ${kuisSkor}`;
+                kuisAyat.textContent = soal.q;
+                kuisPilihan.innerHTML = '';
+                soal.o.sort(() => .5-Math.random()).forEach(pilihan => {
+                    const btn = document.createElement('button'); btn.className = 'quiz-option w-full';
+                    btn.textContent = pilihan;
+                    btn.onclick = () => pilihJawaban(btn, pilihan, soal.a);
+                    kuisPilihan.appendChild(btn);
+                });
+            }
+            function pilihJawaban(btn, terpilih, benar) {
+                kuisPilihan.querySelectorAll('button').forEach(b => b.disabled = true);
+                if (terpilih === benar) {
+                    btn.classList.add('correct'); kuisSkor += 10;
+                } else {
+                    btn.classList.add('incorrect');
+                    kuisPilihan.querySelectorAll('button').forEach(b => { if (b.textContent === benar) b.classList.add('correct'); });
+                }
+                setTimeout(() => { kuisIndex++; muatSoal(); }, 1500);
+            }
+            function tampilkanSkorAkhir() {
+                kuisArea.classList.add('hidden'); kuisSelesai.classList.remove('hidden');
+                skorAkhir.textContent = `Kamu berhasil mengumpulkan ${kuisSkor} poin! Hebat! 🏆`;
+            }
+            ulangKuisBtn.addEventListener('click', mulaiKuis);
+
+            // --- Rangkai Ayat Logic ---
+            const ayatBank = [
+                { correct: ["إِنَّ", "الْإِنْسَانَ", "لَفِي", "خُسْرٍ"], words: ["خُسْرٍ", "لَفِي", "الْإِنْسَانَ", "إِنَّ"] },
+                { correct: ["قُلْ", "هُوَ", "اللَّهُ", "أَحَدٌ"], words: ["أَحَدٌ", "قُلْ", "اللَّهُ", "هُوَ"] },
+                { correct: ["فَصَلِّ", "لِرَبِّكَ", "وَانْحَرْ"], words: ["وَانْحَرْ", "فَصَلِّ", "لِرَبِّكَ"] }
+            ];
+            let currentAyatIndex = 0;
+            const wordBank = document.getElementById('ayat-word-bank'), dropZone = document.getElementById('ayat-drop-zone'),
+                  feedback = document.getElementById('ayat-feedback');
+            function setupAyatGame() {
+                const currentAyat = ayatBank[currentAyatIndex];
+                wordBank.innerHTML = ''; dropZone.innerHTML = ''; feedback.innerHTML = '';
+                currentAyat.words.sort(() => .5-Math.random()).forEach(text => {
+                    const wordEl = document.createElement('div'); wordEl.className = 'ayat-word';
+                    wordEl.textContent = text; wordEl.draggable = true;
+                    wordEl.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', text); e.target.classList.add('dragging'); });
+                    wordEl.addEventListener('dragend', e => e.target.classList.remove('dragging'));
+                    wordBank.appendChild(wordEl);
+                });
+            }
+            dropZone.addEventListener('dragover', e => e.preventDefault());
+            dropZone.addEventListener('drop', e => {
+                e.preventDefault();
+                const text = e.dataTransfer.getData('text/plain'),
+                      draggedEl = document.querySelector(`.ayat-word[draggable='true'][class*='dragging']`);
+                if (draggedEl) { dropZone.appendChild(draggedEl); checkOrder(); }
+            });
+            async function checkOrder() {
+                const currentAyat = ayatBank[currentAyatIndex],
+                      currentOrder = Array.from(dropZone.children).map(el=>el.textContent);
+                if (currentOrder.length === currentAyat.correct.length) {
+                    if (JSON.stringify(currentOrder) === JSON.stringify(currentAyat.correct)) {
+                        feedback.innerHTML = `<p class="font-bold text-green-600">Masya Allah, benar! 🎉</p><button id="hikmah-ayat-btn" class="btn-primary py-2 px-4 mt-2 text-sm">Lihat Mutiara Hikmah</button>`;
+                        document.getElementById('hikmah-ayat-btn').addEventListener('click', () => getAyatHikmah(currentAyat.correct.join(' ')));
+                    } else { feedback.innerHTML = `<p class="font-bold text-red-600">Belum tepat, coba susun lagi!</p>`; }
+                }
+            }
+            async function getAyatHikmah(ayat) {
+                const btn = document.getElementById('hikmah-ayat-btn'); btn.disabled = true; btn.innerHTML = `<div class="loader mx-auto"></div>`;
+                const prompt = `Kamu Ustadzah Ummul. Jelaskan hikmah dari ayat '${ayat}' untuk anak kelas 3 SD. Bahasa ceria & sederhana.`;
+                try {
+                    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] }, apiKey = "",
+                          apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+                          response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                          result = await response.json();
+                    if (result.candidates) {
+                        feedback.innerHTML = `<div class="p-3 bg-amber-100 text-amber-800 rounded-lg text-left">${result.candidates[0].content.parts[0].text.replace(/\n/g, '<br>')}</div><button id="reset-ayat-btn" class="btn-primary py-2 px-4 mt-2 text-sm">Ayat Berikutnya</button>`;
+                        document.getElementById('reset-ayat-btn').addEventListener('click', () => {
+                            currentAyatIndex = (currentAyatIndex + 1) % ayatBank.length;
+                            setupAyatGame();
+                        });
+                    }
+                } catch (e) { feedback.innerHTML = `<p>Maaf, ada gangguan.</p>`; }
+            }
+            
+            const askUstadzahBtn = document.getElementById('ask-ustadzah-btn'), ustadzahQuestion = document.getElementById('ustadzah-question'),
+                  ustadzahAnswerArea = document.getElementById('ustadzah-answer-area'), ustadzahLoading = document.getElementById('ustadzah-loading'),
+                  ustadzahResponse = document.getElementById('ustadzah-response');
+            askUstadzahBtn.addEventListener('click', async () => {
+                const question = ustadzahQuestion.value.trim();
+                if (!question) { alert("Tulis pertanyaanmu dulu ya."); return; }
+                askUstadzahBtn.disabled = true; ustadzahAnswerArea.classList.remove('hidden'); ustadzahLoading.classList.remove('hidden'); ustadzahResponse.classList.add('hidden');
+                const prompt = `Kamu Ustadzah Ummul, guru ngaji ramah untuk anak kelas 3 SD. Jawab pertanyaan ini dalam Bahasa Indonesia sederhana & ceria: "${question}"`;
+                try {
+                    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] }, apiKey = "",
+                          apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+                          response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                          result = await response.json();
+                    if (result.candidates) { ustadzahResponse.innerHTML = result.candidates[0].content.parts[0].text.replace(/\n/g, '<br>'); }
+                    else { ustadzahResponse.textContent = "Maaf, Ustadzah sedang sibuk."; }
+                } catch (e) { ustadzahResponse.textContent = "Maaf, ada gangguan."; } finally {
+                    ustadzahLoading.classList.add('hidden'); ustadzahResponse.classList.remove('hidden'); askUstadzahBtn.disabled = false;
+                }
+            });
+
+            // --- Initial Load ---
+            showPage(currentPage);
+            mulaiKuis();
+            setupAyatGame();
+        });
+    </script>
+</body>
+</html>
